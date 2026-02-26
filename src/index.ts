@@ -86,6 +86,7 @@ interface Profile {
   status: string;
   jobTitle: string;
   companyName: string;
+  location: string;
   mobilePrimary: string;
   landlineNumber: string;
   address: string;
@@ -93,7 +94,9 @@ interface Profile {
   instagramLink: string;
   tiktokLink: string;
   whatsappNumber: string;
+  viberNumber: string;
   websiteLink: string;
+  aboutText: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -162,6 +165,7 @@ app.get('/api/profiles/:uniqueCode', async (req, res) => {
       status: data.status,
       jobTitle: data.job_title,
       companyName: data.company_name,
+      location: data.location,
       mobilePrimary: data.mobile_primary,
       landlineNumber: data.landline_number,
       address: data.address,
@@ -169,7 +173,9 @@ app.get('/api/profiles/:uniqueCode', async (req, res) => {
       instagramLink: data.instagram_link,
       tiktokLink: data.tiktok_link,
       whatsappNumber: data.whatsapp_number,
+      viberNumber: data.viber_number,
       websiteLink: data.website_link,
+      aboutText: data.about_text,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };
@@ -227,6 +233,7 @@ app.post('/api/profiles', requireAdmin, async (req, res) => {
       email: profileData.email || 'default@example.com',
       job_title: profileData.jobTitle || 'Default Job Title',
       company_name: profileData.companyName || 'Default Company',
+      location: profileData.location || 'Default Location',
       mobile_primary: profileData.mobilePrimary || '000-000-0000',
       landline_number: profileData.landlineNumber || '000-000-0000',
       address: profileData.address || 'Default Address',
@@ -234,7 +241,9 @@ app.post('/api/profiles', requireAdmin, async (req, res) => {
       instagram_link: profileData.instagramLink || 'Update your Instagram Link',
       tiktok_link: profileData.tiktokLink || 'Update your TikTok Link',
       whatsapp_number: profileData.whatsappNumber || 'Update your WhatsApp Number',
-      website_link: profileData.websiteLink || 'Update your web link'
+      viber_number: profileData.viberNumber || 'Update your Viber Number',
+      website_link: profileData.websiteLink || 'Update your web link',
+      about_text: profileData.aboutText || 'Update your About text'
     };
 
     const { data, error } = await supabase
@@ -262,6 +271,7 @@ app.post('/api/profiles', requireAdmin, async (req, res) => {
       status: data.status,
       jobTitle: data.job_title,
       companyName: data.company_name,
+      location: data.location,
       mobilePrimary: data.mobile_primary,
       landlineNumber: data.landline_number,
       address: data.address,
@@ -269,7 +279,9 @@ app.post('/api/profiles', requireAdmin, async (req, res) => {
       instagramLink: data.instagram_link,
       tiktokLink: data.tiktok_link,
       whatsappNumber: data.whatsapp_number,
+      viberNumber: data.viber_number,
       websiteLink: data.website_link,
+      aboutText: data.about_text,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };
@@ -298,6 +310,7 @@ app.put('/api/profiles/:uniqueCode', async (req, res) => {
       status: updateData.status,
       job_title: updateData.jobTitle,
       company_name: updateData.companyName,
+      location: updateData.location,
       mobile_primary: updateData.mobilePrimary,
       landline_number: updateData.landlineNumber,
       address: updateData.address,
@@ -305,7 +318,9 @@ app.put('/api/profiles/:uniqueCode', async (req, res) => {
       instagram_link: updateData.instagramLink,
       tiktok_link: updateData.tiktokLink,
       whatsapp_number: updateData.whatsappNumber,
+      viber_number: updateData.viberNumber,
       website_link: updateData.websiteLink,
+      about_text: updateData.aboutText,
       updated_at: new Date().toISOString()
     };
 
@@ -337,6 +352,7 @@ app.put('/api/profiles/:uniqueCode', async (req, res) => {
       status: data.status,
       jobTitle: data.job_title,
       companyName: data.company_name,
+      location: data.location,
       mobilePrimary: data.mobile_primary,
       landlineNumber: data.landline_number,
       address: data.address,
@@ -344,7 +360,9 @@ app.put('/api/profiles/:uniqueCode', async (req, res) => {
       instagramLink: data.instagram_link,
       tiktokLink: data.tiktok_link,
       whatsappNumber: data.whatsapp_number,
+      viberNumber: data.viber_number,
       websiteLink: data.website_link,
+      aboutText: data.about_text,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };
@@ -394,6 +412,7 @@ app.post('/api/profiles/:uniqueCode/upload', upload.single('photo'), async (req,
       status: data.status,
       jobTitle: data.job_title,
       companyName: data.company_name,
+      location: data.location,
       mobilePrimary: data.mobile_primary,
       landlineNumber: data.landline_number,
       address: data.address,
@@ -401,7 +420,9 @@ app.post('/api/profiles/:uniqueCode/upload', upload.single('photo'), async (req,
       instagramLink: data.instagram_link,
       tiktokLink: data.tiktok_link,
       whatsappNumber: data.whatsapp_number,
+      viberNumber: data.viber_number,
       websiteLink: data.website_link,
+      aboutText: data.about_text,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };

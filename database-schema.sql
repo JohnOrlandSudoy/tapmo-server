@@ -30,5 +30,9 @@ CREATE TABLE public.profiles (
   created_at timestamp without time zone DEFAULT now(),
   updated_at timestamp without time zone DEFAULT now(),
   status character varying DEFAULT 'active'::character varying,
+  about_text text DEFAULT 'Update your About'::text,
+  viber_number character varying DEFAULT 'Update your Viber Number'::character varying,
+  branch_name character varying DEFAULT 'Update your Branch'::character varying,
+  location character varying DEFAULT 'Default Location'::character varying,
   CONSTRAINT profiles_pkey PRIMARY KEY (id)
 );

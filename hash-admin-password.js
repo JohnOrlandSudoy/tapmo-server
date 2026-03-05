@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 
-const password = 'ADminpassword123';
+const password = 'adminTapbosscard123';
 
 bcrypt.hash(password, 10).then(hash => {
   console.log(hash);

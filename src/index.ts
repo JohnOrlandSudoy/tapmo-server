@@ -23,6 +23,13 @@ const supabase = createClient(
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
+
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Auth
@@ -50,15 +57,7 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // File upload configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+const storage = multer.memoryStorage();
 
 const upload = multer({ 
   storage,
@@ -74,6 +73,33 @@ const upload = multer({
     }
   }
 });
+
+// Helper to upload to Supabase Storage
+async function uploadToSupabase(file: Express.Multer.File, folder: string = 'uploads'): Promise<string> {
+  const timestamp = Date.now();
+  const random = Math.round(Math.random() * 1E9);
+  const extension = path.extname(file.originalname);
+  const filename = `${folder}/${timestamp}-${random}${extension}`;
+
+  const { data, error } = await supabase.storage
+    .from('public-uploads') // Using 'public-uploads' bucket
+    .upload(filename, file.buffer, {
+      contentType: file.mimetype,
+      upsert: false
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  // Get public URL
+  const { data: { publicUrl } } = supabase.storage
+    .from('public-uploads')
+    .getPublicUrl(filename);
+
+  return publicUrl;
+}
+
 
 // Types
 interface Profile {
@@ -97,6 +123,9 @@ interface Profile {
   viberNumber: string;
   websiteLink: string;
   aboutText: string;
+  themeColor?: string;
+  logo?: string;
+  is_pro?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -154,6 +183,8 @@ app.get('/api/profiles/:uniqueCode', async (req, res) => {
       return res.status(404).json({ error: 'Profile not found' });
     }
 
+    res.setHeader('Cache-Control', 'no-store');
+
     // Convert database field names to frontend format
     const profile: Profile = {
       id: data.admin_id,
@@ -176,6 +207,9 @@ app.get('/api/profiles/:uniqueCode', async (req, res) => {
       viberNumber: data.viber_number,
       websiteLink: data.website_link,
       aboutText: data.about_text,
+      themeColor: data.theme_color,
+      logo: data.logo_url,
+      is_pro: data.is_pro,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };
@@ -243,7 +277,9 @@ app.post('/api/profiles', requireAdmin, async (req, res) => {
       whatsapp_number: profileData.whatsappNumber || 'Update your WhatsApp Number',
       viber_number: profileData.viberNumber || 'Update your Viber Number',
       website_link: profileData.websiteLink || 'Update your web link',
-      about_text: profileData.aboutText || 'Update your About text'
+      about_text: profileData.aboutText || 'Update your About text',
+      theme_color: profileData.themeColor || null,
+      logo_url: profileData.logo || null
     };
 
     const { data, error } = await supabase
@@ -282,6 +318,9 @@ app.post('/api/profiles', requireAdmin, async (req, res) => {
       viberNumber: data.viber_number,
       websiteLink: data.website_link,
       aboutText: data.about_text,
+      themeColor: data.theme_color,
+      logo: data.logo_url,
+      is_pro: data.is_pro,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };
@@ -321,6 +360,8 @@ app.put('/api/profiles/:uniqueCode', async (req, res) => {
       viber_number: updateData.viberNumber,
       website_link: updateData.websiteLink,
       about_text: updateData.aboutText,
+      theme_color: updateData.themeColor,
+      logo_url: updateData.logo,
       updated_at: new Date().toISOString()
     };
 
@@ -363,6 +404,9 @@ app.put('/api/profiles/:uniqueCode', async (req, res) => {
       viberNumber: data.viber_number,
       websiteLink: data.website_link,
       aboutText: data.about_text,
+      themeColor: data.theme_color,
+      logo: data.logo_url,
+      is_pro: data.is_pro,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };
@@ -384,7 +428,8 @@ app.post('/api/profiles/:uniqueCode/upload', upload.single('photo'), async (req,
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const fileUrl = `/uploads/${file.filename}`;
+    // Upload to Supabase Storage
+    const fileUrl = await uploadToSupabase(file, 'profiles');
     
     const { data, error } = await supabase
       .from('profiles')
@@ -423,6 +468,9 @@ app.post('/api/profiles/:uniqueCode/upload', upload.single('photo'), async (req,
       viberNumber: data.viber_number,
       websiteLink: data.website_link,
       aboutText: data.about_text,
+      themeColor: data.theme_color,
+      logo: data.logo_url,
+      is_pro: data.is_pro,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };
@@ -430,6 +478,184 @@ app.post('/api/profiles/:uniqueCode/upload', upload.single('photo'), async (req,
     res.json(profile);
   } catch (error) {
     console.error('Error uploading photo:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Upload logo
+app.post('/api/profiles/:uniqueCode/upload-logo', upload.single('logo'), async (req, res) => {
+  try {
+    const { uniqueCode } = req.params;
+    const file = req.file;
+    
+    if (!file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Upload to Supabase Storage
+    const fileUrl = await uploadToSupabase(file, 'logos');
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ 
+        logo_url: fileUrl,
+        updated_at: new Date().toISOString()
+      })
+      .eq('unique_code', uniqueCode)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Database error:', error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    // Convert back to frontend format
+    const profile: Profile = {
+      id: data.admin_id,
+      pin: data.pin,
+      uniqueCode: data.unique_code,
+      profilePhoto: data.profile_photo_url,
+      fullName: data.full_name,
+      email: data.email,
+      status: data.status,
+      jobTitle: data.job_title,
+      companyName: data.company_name,
+      location: data.location,
+      mobilePrimary: data.mobile_primary,
+      landlineNumber: data.landline_number,
+      address: data.address,
+      facebookLink: data.facebook_link,
+      instagramLink: data.instagram_link,
+      tiktokLink: data.tiktok_link,
+      whatsappNumber: data.whatsapp_number,
+      viberNumber: data.viber_number,
+      websiteLink: data.website_link,
+      aboutText: data.about_text,
+      logo: data.logo_url,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
+
+    res.json(profile);
+  } catch (error) {
+    console.error('Error uploading logo:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Gallery endpoints
+
+// Upload gallery image (flyer)
+app.post('/api/profiles/:uniqueCode/gallery', upload.single('image'), async (req, res) => {
+  try {
+    const { uniqueCode } = req.params;
+    const file = req.file;
+    
+    if (!file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Upload to Supabase Storage
+    const fileUrl = await uploadToSupabase(file, 'gallery');
+    
+    // Insert into profile_gallery table
+    const { data, error } = await supabase
+      .from('profile_gallery')
+      .insert({ 
+        profile_unique_code: uniqueCode,
+        image_url: fileUrl
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Database error:', error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error('Error uploading gallery image:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get gallery images
+app.get('/api/profiles/:uniqueCode/gallery', async (req, res) => {
+  try {
+    const { uniqueCode } = req.params;
+    
+    const { data, error } = await supabase
+      .from('profile_gallery')
+      .select('*')
+      .eq('profile_unique_code', uniqueCode)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Database error:', error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching gallery:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Delete gallery image
+app.delete('/api/profiles/:uniqueCode/gallery/:id', async (req, res) => {
+  try {
+    const { uniqueCode, id } = req.params;
+    
+    // First get the image url to delete file
+    const { data: imageData, error: fetchError } = await supabase
+      .from('profile_gallery')
+      .select('image_url')
+      .eq('id', id)
+      .eq('profile_unique_code', uniqueCode)
+      .single();
+      
+    if (fetchError) {
+       return res.status(404).json({ error: 'Image not found' });
+    }
+
+    // Delete from database
+    const { error } = await supabase
+      .from('profile_gallery')
+      .delete()
+      .eq('id', id)
+      .eq('profile_unique_code', uniqueCode);
+
+    if (error) {
+      console.error('Database error:', error);
+      return res.status(400).json({ error: error.message });
+    }
+    
+    // Try to delete file from Supabase Storage (optional, non-blocking)
+    if (imageData && imageData.image_url) {
+        try {
+            // Extract path from URL
+            // Format: .../storage/v1/object/public/public-uploads/folder/filename
+            const urlParts = imageData.image_url.split('/public-uploads/');
+            if (urlParts.length > 1) {
+                const storagePath = urlParts[1];
+                supabase.storage
+                    .from('public-uploads')
+                    .remove([storagePath])
+                    .then(({ error }) => {
+                        if (error) console.error('Error deleting file from storage:', error);
+                    });
+            }
+        } catch (e) {
+            console.error('Error parsing storage URL:', e);
+        }
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting gallery image:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -599,6 +825,43 @@ app.post('/api/admin/profiles/:uniqueCode/unban', requireAdmin, async (req, res)
   }
 });
 
+// Admin: Toggle Pro status
+app.post('/api/admin/profiles/:uniqueCode/toggle-pro', requireAdmin, async (req, res) => {
+  try {
+    const { uniqueCode } = req.params;
+    
+    // First get current status
+    const { data: profile, error: fetchError } = await supabase
+      .from('profiles')
+      .select('is_pro')
+      .eq('unique_code', uniqueCode)
+      .single();
+      
+    if (fetchError || !profile) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+    
+    // Toggle status
+    const newStatus = !profile.is_pro;
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ is_pro: newStatus })
+      .eq('unique_code', uniqueCode)
+      .select()
+      .single();
+      
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+    
+    return res.json({ success: true, is_pro: data.is_pro });
+  } catch (e) {
+    console.error('Toggle Pro error:', e);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Admin: get all profiles with pagination and search
 app.get('/api/admin/profiles', requireAdmin, async (req, res) => {
   try {
@@ -746,6 +1009,12 @@ app.post('/api/admin/profiles/bulk', requireAdmin, async (req, res) => {
     console.error('Bulk operation error:', e);
     return res.status(500).json({ error: 'Server error' });
   }
+});
+
+// 404 Handler
+app.use((req, res, next) => {
+  console.log(`[404] Route not found: ${req.method} ${req.url}`);
+  res.status(404).json({ error: `Route not found: ${req.method} ${req.url}` });
 });
 
 // Error handling middleware

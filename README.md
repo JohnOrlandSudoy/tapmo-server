@@ -1,6 +1,6 @@
-# KontactShare Server API
+# TapBoss Server API
 
-Backend API for the KontactShare application built with Node.js, Express, and Supabase.
+Backend API for the TapBoss application built with Node.js, Express, and Supabase.
 
 ## Features
 

@@ -1,7 +1,7 @@
 {
-  "name": "kontactshare-server",
+  "name": "tapboss-server",
   "version": "1.0.0",
-  "description": "Backend API for KontactShare application",
+  "description": "Backend API for TapBoss application",
   "main": "dist/index.js",
   "scripts": {
     "start": "node dist/index.js",
@@ -10,7 +10,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
-    "kontactshare",
+    "tapboss",
     "api",
     "express",
     "supabase"

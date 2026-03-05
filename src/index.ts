@@ -120,6 +120,7 @@ interface Profile {
   tiktokLink: string;
   whatsappNumber: string;
   viberNumber: string;
+  googleMapLink?: string;
   websiteLink: string;
   aboutText: string;
   themeColor?: string;
@@ -133,7 +134,7 @@ interface Profile {
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'KontactShare API is running' });
+  res.json({ status: 'OK', message: 'TapBoss API is running' });
 });
 
 // Admin login
@@ -204,6 +205,7 @@ app.get('/api/profiles/:uniqueCode', async (req, res) => {
       tiktokLink: data.tiktok_link,
       whatsappNumber: data.whatsapp_number,
       viberNumber: data.viber_number,
+      googleMapLink: data.google_map_link,
       websiteLink: data.website_link,
       aboutText: data.about_text,
       themeColor: data.theme_color,
@@ -254,7 +256,7 @@ app.post('/api/profiles', requireAdmin, async (req, res) => {
     const pin = profileData.pin || generatePin();
     
     // Set default profile photo if not provided
-    const profilePhoto = profileData.profilePhoto || '/uploads/kontacksharelogo.png';
+    const profilePhoto = profileData.profilePhoto || '/uploads/tapbos.png';
     
     // Convert frontend format to database format
     const dbProfile = {
@@ -315,6 +317,7 @@ app.post('/api/profiles', requireAdmin, async (req, res) => {
       tiktokLink: data.tiktok_link,
       whatsappNumber: data.whatsapp_number,
       viberNumber: data.viber_number,
+      googleMapLink: data.google_map_link,
       websiteLink: data.website_link,
       aboutText: data.about_text,
       themeColor: data.theme_color,
@@ -529,9 +532,12 @@ app.post('/api/profiles/:uniqueCode/upload-logo', upload.single('logo'), async (
       tiktokLink: data.tiktok_link,
       whatsappNumber: data.whatsapp_number,
       viberNumber: data.viber_number,
+      googleMapLink: data.google_map_link,
       websiteLink: data.website_link,
       aboutText: data.about_text,
+      themeColor: data.theme_color,
       logo: data.logo_url,
+      is_pro: data.is_pro,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };
@@ -1030,7 +1036,7 @@ app.use((error: any, req: express.Request, res: express.Response, next: express.
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 KontactShare API server running on port ${PORT}`);
+  console.log(`🚀 TapBoss API server running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
   console.log(`📁 Uploads directory: ${uploadsDir}`);
 });

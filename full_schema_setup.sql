@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   branch_name character varying DEFAULT 'Update your Branch'::character varying,
   location character varying DEFAULT 'Default Location'::character varying,
   logo_url text,
+  google_map_link text,
   is_pro boolean DEFAULT false,
   theme_color text,
   CONSTRAINT profiles_pkey PRIMARY KEY (id)

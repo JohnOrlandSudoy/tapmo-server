@@ -1,7 +1,7 @@
 -- Full Database Schema for New Supabase Project
 
 -- 1. Create Admins Table
-CREATE TABLE public.admins (
+CREATE TABLE IF NOT EXISTS public.admins (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   email character varying NOT NULL UNIQUE,
   password_hash text NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE public.admins (
 );
 
 -- 2. Create Profiles Table (Create this before profile_gallery because of Foreign Key)
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   admin_id character varying NOT NULL UNIQUE,
   pin character varying NOT NULL,
@@ -43,7 +43,7 @@ CREATE TABLE public.profiles (
 );
 
 -- 3. Create Profile Gallery Table
-CREATE TABLE public.profile_gallery (
+CREATE TABLE IF NOT EXISTS public.profile_gallery (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   profile_unique_code text,
   image_url text NOT NULL,
@@ -52,17 +52,53 @@ CREATE TABLE public.profile_gallery (
   CONSTRAINT profile_gallery_profile_unique_code_fkey FOREIGN KEY (profile_unique_code) REFERENCES public.profiles(unique_code)
 );
 
--- 4. Enable Row Level Security (Optional but Recommended)
+-- 4. Enable Row Level Security (Recommended)
 ALTER TABLE public.admins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profile_gallery ENABLE ROW LEVEL SECURITY;
 
--- 5. Create Policies (Open Access for now based on your screenshot showing RLS disabled, but good to have ready)
+-- 5. Create Policies for Tables
 -- Allow public read access to active profiles
 CREATE POLICY "Public can view active profiles" ON public.profiles FOR SELECT USING (true);
 -- Allow public read access to gallery
 CREATE POLICY "Public can view gallery" ON public.profile_gallery FOR SELECT USING (true);
+-- Allow admins full access (if using Service Role Key, this is bypassed, but good for Client-side Auth)
+-- For now, we rely on Service Role Key for Admin operations from the Server.
 
--- NOTE: Since you are managing everything via a server using a Service Role Key or direct connection, 
--- RLS policies might not be strictly needed if you disable RLS or use the service role key.
--- However, if you use the client-side Supabase client, you will need these policies.
+-- 6. Storage Setup (Create Bucket and Policies)
+-- Note: You might need to run this part separately if your user lacks permissions to modify storage schema directly via SQL Editor.
+-- Best practice is to create the bucket 'public-uploads' via Supabase Dashboard -> Storage -> New Bucket (Public).
+
+-- Policies for 'public-uploads' bucket
+-- Allow public read access
+create policy "Public Access"
+on storage.objects for select
+to public
+using ( bucket_id = 'public-uploads' );
+
+-- Allow public upload access (needed if using Anon Key, bypassed if using Service Role Key)
+create policy "Public Upload"
+on storage.objects for insert
+to public
+with check ( bucket_id = 'public-uploads' );
+
+-- Allow public update access
+create policy "Public Update"
+on storage.objects for update
+to public
+using ( bucket_id = 'public-uploads' );
+
+-- Allow public delete access
+create policy "Public Delete"
+on storage.objects for delete
+to public
+using ( bucket_id = 'public-uploads' );
+
+-- 7. Create Admin User
+INSERT INTO public.admins (email, password_hash, role)
+VALUES (
+  'Tapbosscard@gmail.com', 
+  '$2b$10$Xfb5gtoU5ld4EqHFicQkruGVjcoahHt2n5bV5HxMjApfxzlCL0bGq', 
+  'admin'
+)
+ON CONFLICT (email) DO NOTHING;

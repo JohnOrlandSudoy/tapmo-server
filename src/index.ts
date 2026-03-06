@@ -239,11 +239,11 @@ function generateIdCard(): string {
   const month = String(today.getMonth() + 1).padStart(2, '0');
   const day = String(today.getDate()).padStart(2, '0');
   const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  return `${year}${month}${day}-0000-${random}`;
+  return `${year}${month}${day}0000${random}`;
 }
 
 function generatePin(): string {
-  return Math.floor(10000 + Math.random() * 90000).toString();
+  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 app.post('/api/profiles', requireAdmin, async (req, res) => {
@@ -279,7 +279,7 @@ app.post('/api/profiles', requireAdmin, async (req, res) => {
       viber_number: profileData.viberNumber || 'Update your Viber Number',
       website_link: profileData.websiteLink || 'Update your web link',
       about_text: profileData.aboutText || 'Update your About text',
-      theme_color: profileData.themeColor || null,
+      theme_color: null,
       logo_url: profileData.logo || null
     };
 
@@ -362,14 +362,29 @@ app.put('/api/profiles/:uniqueCode', async (req, res) => {
       viber_number: updateData.viberNumber,
       website_link: updateData.websiteLink,
       about_text: updateData.aboutText,
-      theme_color: updateData.themeColor,
       logo_url: updateData.logo,
       updated_at: new Date().toISOString()
     };
 
-    // Optional PIN update (5 digits)
-    if (typeof updateData.pin === 'string' && /^\d{5}$/.test(updateData.pin)) {
+    // Optional PIN update (6 digits)
+    if (typeof updateData.pin === 'string' && /^\d{6}$/.test(updateData.pin)) {
       dbUpdateData.pin = updateData.pin;
+    }
+
+    if (typeof updateData.themeColor === 'string' && updateData.themeColor) {
+      const { data: proData, error: proError } = await supabase
+        .from('profiles')
+        .select('is_pro')
+        .eq('unique_code', uniqueCode)
+        .single();
+
+      if (proError || !proData) {
+        return res.status(404).json({ error: 'Profile not found' });
+      }
+
+      if (proData.is_pro === true) {
+        dbUpdateData.theme_color = updateData.themeColor;
+      }
     }
 
     const { data, error } = await supabase
@@ -669,13 +684,18 @@ app.delete('/api/profiles/:uniqueCode/gallery/:id', async (req, res) => {
 app.post('/api/profiles/:uniqueCode/verify', async (req, res) => {
   try {
     const { uniqueCode } = req.params;
-    const { id, pin } = req.body;
+    const { id, pin } = req.body as { id?: string; pin?: string };
+    if (!id || !pin) {
+      return res.status(400).json({ error: 'id and pin are required' });
+    }
+    const digitsId = id.replace(/\D/g, '');
+    const hyphenId = `${digitsId.slice(0, 8)}-0000-${digitsId.slice(12)}`;
     
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('unique_code', uniqueCode)
-      .eq('admin_id', id)
+      .or(`admin_id.eq.${digitsId},admin_id.eq.${hyphenId}`)
       .eq('pin', pin)
       .single();
 
@@ -699,11 +719,13 @@ app.post('/api/profiles/verify', async (req, res) => {
     if (!id || !pin) {
       return res.status(400).json({ error: 'id and pin are required' });
     }
+    const digitsId = id.replace(/\D/g, '');
+    const hyphenId = `${digitsId.slice(0, 8)}-0000-${digitsId.slice(12)}`;
 
     const { data, error } = await supabase
       .from('profiles')
       .select('admin_id, pin, unique_code, status')
-      .eq('admin_id', id)
+      .or(`admin_id.eq.${digitsId},admin_id.eq.${hyphenId}`)
       .single();
 
     if (error || !data) {

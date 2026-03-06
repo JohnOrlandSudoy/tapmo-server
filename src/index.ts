@@ -295,7 +295,7 @@ app.post('/api/profiles', requireAdmin, async (req, res) => {
     }
 
     // Generate profile link
-    const profileLink = `https://client-test-tapboss.vercel.app/myprofile/${uniqueCode}`;
+    const profileLink = `https://www.tapboss.cards/myprofile/${uniqueCode}`;
 
     // Convert back to frontend format
     const profile: Profile = {
